@@ -1,7 +1,8 @@
 // アプリケーションのグローバル状態
 const appState = {
-    videoStream: null,
-    videoStream2: null,
+    videoStreamNoCorrection: null,
+    videoStreamDefault: null,
+    currentStream: null, // 現在表示中のストリーム
     imageDataNoCorrection: null,
     imageDataDefault: null,
     currentConstraints: {
@@ -11,7 +12,6 @@ const appState = {
             facingMode: 'environment'
         }
     },
-    disableCorrections: true,
     devices: []
 };
 
@@ -27,7 +27,6 @@ const elements = {
     downloadDefault: document.getElementById('downloadDefault'),
     clearBtn: document.getElementById('clearBtn'),
     compareBtn: document.getElementById('compareBtn'),
-    disableCorrections: document.getElementById('disableCorrections'),
     status: document.getElementById('status'),
     noCorrectionStatus: document.getElementById('noCorrectionStatus'),
     defaultStatus: document.getElementById('defaultStatus'),
@@ -93,27 +92,10 @@ async function requestCameraAccess() {
             video: {
                 width: { ideal: 1280 },
                 height: { ideal: 720 },
-                facingMode: 'environment',
-                // 補正をオンにする設定
-                advanced: [
-                    {
-                        whiteBalanceMode: 'continuous',
-                        exposureMode: 'continuous',
-                        focusMode: 'continuous',
-                        //exposureCompensation: 0,
-                        //colorTemperature: 6500,
-                        //iso: 100,
-                        //exposureTime: 200,
-                        //focusDistance: 1.0,
-                        //brightness: 0,
-                        //contrast: 0,
-                        //saturation: 0,
-                        //sharpness: 0,
-                    }
-                ]
+                facingMode: 'environment'
             }
         };
-        
+
         // 補正なしのストリーム
         const constraintsNoCorrection = {
             video: {
@@ -124,45 +106,53 @@ async function requestCameraAccess() {
                 advanced: [
                     {
                         whiteBalanceMode: 'manual',
+                        colorTemperature: 6500,  // 昼光の色温度
                         exposureMode: 'manual',
-                        focusMode: 'continuous',
                         exposureCompensation: 0,
-                        colorTemperature: 6500,
-                        iso: 100,
-                        exposureTime: 200,
-                        //focusDistance: 1.0,
-                        brightness: 0,
-                        contrast: 0,
-                        saturation: 0,
-                        sharpness: 0,
+                        exposureTime: 33333,
+                        focusMode: 'continuous',
+                        zoom: 1.0
                     }
                 ]
             }
         };
-        
+
         // デバイスが選択されている場合は使用
         if (elements.deviceSelect.value) {
             constraintsDefault.video.deviceId = { exact: elements.deviceSelect.value };
             constraintsNoCorrection.video.deviceId = { exact: elements.deviceSelect.value };
         }
-        
+
+        // 両方のストリームを取得
         try {
-            // 補正なしストリーム
-            appState.videoStream = await navigator.mediaDevices.getUserMedia(constraintsNoCorrection);
+            // 補正なしストリームを取得
+            appState.videoStreamNoCorrection = await navigator.mediaDevices.getUserMedia(constraintsNoCorrection);
+            console.log('補正なしストリーム取得成功');
         } catch (e) {
-            console.warn('補正設定が利用不可、デフォルト設定で取得:', e);
+            console.warn('補正なし設定が利用不可、デフォルト設定で取得:', e);
             // フォールバック
-            appState.videoStream = await navigator.mediaDevices.getUserMedia(constraintsDefault);
+            appState.videoStreamNoCorrection = await navigator.mediaDevices.getUserMedia(constraintsDefault);
         }
-        
-        // ビデオ要素に接続
-        elements.cameraPreview.srcObject = appState.videoStream;
-        
+
+        try {
+            // デフォルト補正ストリームを取得
+            appState.videoStreamDefault = await navigator.mediaDevices.getUserMedia(constraintsDefault);
+            console.log('デフォルト補正ストリーム取得成功');
+        } catch (e) {
+            console.warn('デフォルト補正ストリーム取得失敗:', e);
+            // 補正なしストリームをコピー
+            appState.videoStreamDefault = appState.videoStreamNoCorrection;
+        }
+
+        // 初期表示ストリームを設定（常にデフォルト補正）
+        appState.currentStream = appState.videoStreamDefault;
+        elements.cameraPreview.srcObject = appState.currentStream;
+
         // デバイス選択変更時の処理
         elements.deviceSelect.addEventListener('change', async () => {
             await changeDevice();
         });
-        
+
     } catch (error) {
         throw new Error('カメラアクセス拒否: ' + error.message);
     }
@@ -172,10 +162,13 @@ async function requestCameraAccess() {
 async function changeDevice() {
     try {
         // 現在のストリームを停止
-        if (appState.videoStream) {
-            appState.videoStream.getTracks().forEach(track => track.stop());
+        if (appState.videoStreamNoCorrection) {
+            appState.videoStreamNoCorrection.getTracks().forEach(track => track.stop());
         }
-        
+        if (appState.videoStreamDefault) {
+            appState.videoStreamDefault.getTracks().forEach(track => track.stop());
+        }
+
         // 新しいデバイスで再度要求
         await requestCameraAccess();
         elements.status.textContent = 'カメラ変更完了';
@@ -204,12 +197,6 @@ function setupEventListeners() {
     elements.compareModal.addEventListener('click', (e) => {
         if (e.target === elements.compareModal) closeModal();
     });
-    elements.disableCorrections.addEventListener('change', async (e) => {
-        appState.disableCorrections = e.target.checked;
-        elements.status.textContent = e.target.checked ? '補正: OFF' : '補正: ON';
-        // ストリーム再設定
-        await changeDevice();
-    });
 }
 
 // 写真キャプチャ
@@ -217,24 +204,21 @@ async function capturePhoto() {
     try {
         elements.shutterBtn.disabled = true;
         elements.status.textContent = '撮影処理中...';
-        
-        // 補正なしの写真
-        await captureToCanvas(elements.canvasNoCorrection, elements.noCorrectionStatus);
+
+        // 補正なしの写真（補正なしストリームから）
+        await captureToCanvasFromStream(appState.videoStreamNoCorrection, elements.canvasNoCorrection, elements.noCorrectionStatus);
         appState.imageDataNoCorrection = elements.canvasNoCorrection.toDataURL('image/jpeg', 0.95);
-        
-        // デフォルト補正の写真を取得するため、別ストリームが必要
-        // ここでは同じストリームから異なるタイミングで取得
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        await captureToCanvas(elements.canvasDefault, elements.defaultStatus);
+
+        // デフォルト補正の写真（デフォルトストリームから）
+        await captureToCanvasFromStream(appState.videoStreamDefault, elements.canvasDefault, elements.defaultStatus);
         appState.imageDataDefault = elements.canvasDefault.toDataURL('image/jpeg', 0.95);
-        
+
         elements.status.textContent = '撮影完了!';
         elements.downloadNoCorrection.disabled = false;
         elements.downloadDefault.disabled = false;
         elements.clearBtn.disabled = false;
         elements.compareBtn.disabled = false;
-        
+
     } catch (error) {
         console.error('キャプチャエラー:', error);
         elements.status.textContent = 'キャプチャエラー';
@@ -243,17 +227,44 @@ async function capturePhoto() {
     }
 }
 
-// キャンバスへのキャプチャ
+// キャンバスへのキャプチャ（特定のストリームから）
+function captureToCanvasFromStream(stream, canvas, statusElement) {
+    return new Promise((resolve) => {
+        // 一時的なビデオ要素を作成
+        const tempVideo = document.createElement('video');
+        tempVideo.srcObject = stream;
+        tempVideo.muted = true;
+        tempVideo.playsInline = true;
+
+        tempVideo.onloadedmetadata = () => {
+            tempVideo.play().then(() => {
+                canvas.width = tempVideo.videoWidth;
+                canvas.height = tempVideo.videoHeight;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(tempVideo, 0, 0, canvas.width, canvas.height);
+
+                statusElement.textContent = `${canvas.width}x${canvas.height}`;
+
+                // ストリームを停止
+                tempVideo.srcObject = null;
+                resolve();
+            });
+        };
+    });
+}
+
+// キャンバスへのキャプチャ（現在のプレビューから）
 function captureToCanvas(canvas, statusElement) {
     return new Promise((resolve) => {
         const video = elements.cameraPreview;
-        
+
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        
+
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
+
         statusElement.textContent = `${canvas.width}x${canvas.height}`;
         resolve();
     });
@@ -396,7 +407,10 @@ function closeModal() {
 
 // ページアンロード時のクリーンアップ
 window.addEventListener('beforeunload', () => {
-    if (appState.videoStream) {
-        appState.videoStream.getTracks().forEach(track => track.stop());
+    if (appState.videoStreamNoCorrection) {
+        appState.videoStreamNoCorrection.getTracks().forEach(track => track.stop());
+    }
+    if (appState.videoStreamDefault) {
+        appState.videoStreamDefault.getTracks().forEach(track => track.stop());
     }
 });

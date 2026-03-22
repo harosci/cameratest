@@ -5,10 +5,10 @@
 ## 機能 ✨
 
 - **補正設定制御**: Camera APIを使用して以下の補正をカントロール
-  - ホワイトバランスモード
-  - 露出モード
-  - フォーカスモード
-  - ズーム値
+  - whiteBalanceMode（手動・色温度6500K）
+  - exposureMode（手動）
+  - focusMode（自動）
+  - zoom制御
 
 - **並列撮影**: 補正なしとデフォルト補正の2枚を同時に撮影
 
@@ -60,8 +60,7 @@ advanced: [{
     exposureMode: 'manual',
     exposureCompensation: 0,
     exposureTime: 33333,
-    focusMode: 'manual',
-    focusDistance: 0.3,
+    focusMode: 'continuous',
     zoom: 1.0
 }]
 ```
