@@ -93,7 +93,24 @@ async function requestCameraAccess() {
             video: {
                 width: { ideal: 1280 },
                 height: { ideal: 720 },
-                facingMode: 'environment'
+                facingMode: 'environment',
+                // 補正をオンにする設定
+                advanced: [
+                    {
+                        whiteBalanceMode: 'continuous',
+                        exposureMode: 'continuous',
+                        focusMode: 'continuous',
+                        //exposureCompensation: 0,
+                        //colorTemperature: 6500,
+                        //iso: 100,
+                        //exposureTime: 200,
+                        //focusDistance: 1.0,
+                        //brightness: 0,
+                        //contrast: 0,
+                        //saturation: 0,
+                        //sharpness: 0,
+                    }
+                ]
             }
         };
         
@@ -107,13 +124,17 @@ async function requestCameraAccess() {
                 advanced: [
                     {
                         whiteBalanceMode: 'manual',
-                        colorTemperature: 6500,  // 昼光の色温度
                         exposureMode: 'manual',
+                        focusMode: 'continuous',
                         exposureCompensation: 0,
-                        exposureTime: 33333,
-                        focusMode: 'manual',
-                        focusDistance: 0.3,
-                        zoom: 1.0
+                        colorTemperature: 6500,
+                        iso: 100,
+                        exposureTime: 200,
+                        //focusDistance: 1.0,
+                        brightness: 0,
+                        contrast: 0,
+                        saturation: 0,
+                        sharpness: 0,
                     }
                 ]
             }
