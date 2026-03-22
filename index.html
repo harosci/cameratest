@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1976d2">
+    <meta name="description" content="カメラ補正比較アプリケーション">
+    <title>カメラ補正比較</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231976d2' width='192' height='192'/><text x='50%' y='50%' font-size='100' dy='.3em' text-anchor='middle' fill='white' font-family='Arial'>📷</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📷 カメラ補正比較</h1>
+            <p>補正なしとデフォルトの写真を比較</p>
+        </header>
+
+        <main>
+            <!-- カメラビューセクション -->
+            <section class="camera-section">
+                <h2>カメラプレビュー</h2>
+                <div class="camera-container">
+                    <div class="preview-wrapper">
+                        <video id="cameraPreview" autoplay playsinline muted></video>
+                        <label class="correction-mode-label">
+                            <input type="checkbox" id="disableCorrections" checked>
+                            <span>補正をオフ</span>
+                        </label>
+                    </div>
+                    <div class="info-box">
+                        <p><strong>ステータス:</strong> <span id="status">初期化中...</span></p>
+                        <button id="shutterBtn" class="shutter-btn" disabled>📸 撮影</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 結果表示セクション -->
+            <section class="results-section">
+                <h2>撮影結果</h2>
+                <div class="results-container">
+                    <div class="photo-card">
+                        <h3>補正なし</h3>
+                        <div class="photo-frame">
+                            <canvas id="canvasNoCorrection" class="result-canvas"></canvas>
+                            <p id="noCorrectionStatus" class="status-text">撮影待機中</p>
+                        </div>
+                        <button id="downloadNoCorrection" class="download-btn" disabled>ダウンロード</button>
+                    </div>
+
+                    <div class="photo-card">
+                        <h3>デフォルト補正</h3>
+                        <div class="photo-frame">
+                            <canvas id="canvasDefault" class="result-canvas"></canvas>
+                            <p id="defaultStatus" class="status-text">撮影待機中</p>
+                        </div>
+                        <button id="downloadDefault" class="download-btn" disabled>ダウンロード</button>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="clearBtn" class="clear-btn" disabled>クリア</button>
+                    <button id="compareBtn" class="compare-btn" disabled>詳細比較</button>
+                </div>
+            </section>
+
+            <!-- 補正設定パネル -->
+            <section class="settings-section">
+                <h2>カメラ設定</h2>
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label for="deviceSelect">カメラデバイス:</label>
+                        <select id="deviceSelect"></select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="resolutionSelect">解像度:</label>
+                        <select id="resolutionSelect">
+                            <option value="640x480">640x480</option>
+                            <option value="1280x720" selected>1280x720</option>
+                            <option value="1920x1080">1920x1080</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="info-text">
+                    <p>💡 補正をオフにすることで、より自然な色合いが得られます</p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 カメラ補正比較アプリ</p>
+        </footer>
+    </div>
+
+    <!-- モーダル: 詳細比較 -->
+    <div id="compareModal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <h2>詳細比較</h2>
+            <div class="compare-grid">
+                <div class="compare-item">
+                    <h3>補正なし</h3>
+                    <canvas id="compareCanvasNoCorrection"></canvas>
+                </div>
+                <div class="compare-item">
+                    <h3>デフォルト補正</h3>
+                    <canvas id="compareCanvasDefault"></canvas>
+                </div>
+            </div>
+            <div class="compare-info">
+                <h4>色情報分析</h4>
+                <table id="colorAnalysisTable">
+                    <tr>
+                        <th>項目</th>
+                        <th>補正なし</th>
+                        <th>デフォルト</th>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
